@@ -19,7 +19,8 @@
     "url": "https://github.com/burdiuz/js-lib-environment.git"
   },
   "dependencies": {
-    "@actualwave/type-checkers": "git+https://github.com/burdiuz/js-type-checkers.git"
+    "@actualwave/type-checkers": "git+https://github.com/burdiuz/js-type-checkers.git",
+    "lodash.has": "^4.5.2"
   },
   "peerDependencies": {
     "@actualwave/type-checkers": "git+https://github.com/burdiuz/js-type-checkers.git"

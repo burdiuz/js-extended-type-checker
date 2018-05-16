@@ -1,3 +1,5 @@
+import has from 'lodash.has';
+
 import {
   ARGUMENTS,
   GET_PROPERTY,
@@ -7,7 +9,7 @@ import {
   MERGE,
   buildPath,
   AsIs,
-} from '@actualwave/type-checkers/source/utils';
+} from '@actualwave/type-checkers/source/checkers/utils';
 
 import { getTargetTypeCheckerConfig } from '@actualwave/type-checkers/source/target/info';
 
@@ -50,7 +52,7 @@ export const mergeConfigs = ({ types, errorReporter }, source, names = []) => {
   const sourceTypes = source.types;
 
   for (const name in sourceTypes) {
-    if (sourceTypes.hasOwnProperty(name)) {
+    if (has(sourceTypes, name)) {
       const sourceType = sourceTypes[name];
       const targetType = types[name];
 
@@ -128,7 +130,7 @@ const PrimitiveTypeChecker = {
     } else if (this.collectTypesOnInit) {
       if (this.areArrayElementsOfSameType && target instanceof Array) {
         const indexType = getTypeString(target
-        .find((item) => (typeof item !== 'undefined')));
+          .find((item) => (typeof item !== 'undefined')));
 
         if (indexType) {
           types[INDEX] = indexType;
