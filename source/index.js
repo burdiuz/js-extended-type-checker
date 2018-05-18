@@ -1,153 +1,66 @@
-import has from 'lodash.has';
-
-import {
+import PrimitiveTypeChecker, {
   ARGUMENTS,
   GET_PROPERTY,
   RETURN_VALUE,
   SET_PROPERTY,
-  INDEX,
-  MERGE,
-  buildPath,
   AsIs,
-} from '@actualwave/type-checkers/source/checkers/utils';
+  checkPrimitiveType,
+} from '@actualwave/primitive-type-checker';
 
-import { getTargetTypeCheckerConfig } from '@actualwave/type-checkers/source/target/info';
+import {
+  INDEX,
+  isIndexAccessTarget,
+  registerIndexBasedClass,
+  setIndexValueType,
+  setIndexValueTypeBy,
+} from './indexed';
 
-const checkPrimitiveType = (action, types, name, type, errorReporter, sequence) => {
-  if (!type) {
-    return true;
-  }
+import {
+  replaceArgumentsTypeCheck,
+  replaceIndexedTypeCheck,
+  replacePropertyTypeCheck,
+  replaceReturnValueTypeCheck,
+} from './replace';
 
-  const storedType = types[name];
-
-  if (storedType) {
-    if (storedType !== type) {
-      errorReporter(action, buildPath([...sequence, name]), storedType, type);
-
-      return false;
-    }
-  } else {
-    types[name] = type;
-  }
-
-  return true;
-};
-
-const indexBasedClasses = [Array];
-
-export const isIndexAccessTarget = (target) =>
-  (target && indexBasedClasses.indexOf(target.constructor) >= 0);
-
-export const getTypeString = (value) => {
-  if (value === undefined) {
-    return '';
-  } else if (value instanceof Array) {
-    return 'array';
-  }
-
-  return typeof value;
-};
-
-export const mergeConfigs = ({ types, errorReporter }, source, names = []) => {
-  const sourceTypes = source.types;
-
-  for (const name in sourceTypes) {
-    if (has(sourceTypes, name)) {
-      const sourceType = sourceTypes[name];
-      const targetType = types[name];
-
-      if (sourceType && targetType && targetType !== sourceType) {
-        errorReporter(MERGE, buildPath([...names, name]), targetType, sourceType);
-      } else {
-        types[name] = sourceType;
-      }
-    }
-  }
-
-  return { types, errorReporter };
-};
-
-export const replacePropertyTypeCheck = (target, name, typeCheckFn) => {
-  const { types } = getTargetTypeCheckerConfig(target);
-  delete types[name];
-
-  if (typeCheckFn) {
-    types[name] = typeCheckFn;
-  }
-};
-
-export const replaceArgumentsTypeCheck = (target, argumentsTypeCheckFn) => {
-  const { types } = getTargetTypeCheckerConfig(target);
-  delete types[ARGUMENTS];
-
-  if (argumentsTypeCheckFn) {
-    types[ARGUMENTS] = argumentsTypeCheckFn;
-  }
-};
-
-export const replaceReturnValueTypeCheck = (target, returnValueTypeCheckFn) => {
-  const { types } = getTargetTypeCheckerConfig(target);
-  delete types[RETURN_VALUE];
-
-  if (returnValueTypeCheckFn) {
-    types[RETURN_VALUE] = returnValueTypeCheckFn;
-  }
-};
-
-export const registerIndexBasedClass = (constructor) => {
-  indexBasedClasses.push(constructor);
-};
-
-export const setIndexValueType = (target, type) => {
-  const config = getTargetTypeCheckerConfig(target);
-  if (config) {
-    config.types[INDEX] = type;
-  }
-};
-
-export const setIndexValueTypeBy = (target, value) => {
-  setIndexValueType(target, getTypeString(value));
-};
-
-export const replaceIndexedTypeCheck = (target, typeCheckFn) => {
-  const { types } = getTargetTypeCheckerConfig(target);
-  delete types[INDEX];
-
-  if (typeCheckFn) {
-    types[INDEX] = typeCheckFn;
-  }
-};
-
-const PrimitiveTypeChecker = {
-  collectTypesOnInit: true,
-  areArrayElementsOfSameType: true,
+class ExtendedTypeChecker extends PrimitiveTypeChecker {
+  areArrayElementsOfSameType = true;
+  replacePropertyTypeCheck = replacePropertyTypeCheck;
+  replaceArgumentsTypeCheck = replaceArgumentsTypeCheck;
+  replaceReturnValueTypeCheck = replaceReturnValueTypeCheck;
+  replaceIndexedTypeCheck = replaceIndexedTypeCheck;
+  isIndexAccessTarget = isIndexAccessTarget;
+  registerIndexBasedClass = registerIndexBasedClass;
+  setIndexValueType = setIndexValueType;
+  setIndexValueTypeBy = setIndexValueTypeBy;
 
   init(target, errorReporter, cachedTypes = null) {
-    let types = {};
+    const types = {};
 
-    if (cachedTypes) {
-      types = cachedTypes;
-    } else if (this.collectTypesOnInit) {
-      if (this.areArrayElementsOfSameType && target instanceof Array) {
-        const indexType = getTypeString(target
-          .find((item) => (typeof item !== 'undefined')));
+    if (
+      !cachedTypes &&
+      this.collectTypesOnInit &&
+      this.areArrayElementsOfSameType &&
+      isIndexAccessTarget(target)
+    ) {
+      const { length } = target;
 
-        if (indexType) {
-          types[INDEX] = indexType;
+      for (let index = 0; index < length; index += 1) {
+        const type = this.getTypeString(target[index]);
+
+        if (type) {
+          types[INDEX] = type;
+          break;
         }
-      } else {
-        Object.keys(target)
-          .forEach((key) => {
-            types[key] = getTypeString(target[key]);
-          });
       }
+    } else {
+      return super.init(target, errorReporter, cachedTypes);
     }
 
     return {
       types,
       errorReporter,
     };
-  },
+  }
 
   getProperty(target, name, value, config, sequence) {
     if (this.areArrayElementsOfSameType && isIndexAccessTarget(target)) {
@@ -155,7 +68,7 @@ const PrimitiveTypeChecker = {
     }
 
     return this.getNamedProperty(target, name, value, config, sequence);
-  },
+  }
 
   getIndexProperty(target, name, value, config, sequence) {
     const { types, errorReporter } = config;
@@ -165,23 +78,27 @@ const PrimitiveTypeChecker = {
       return typeFn(GET_PROPERTY, target, name, value, config, sequence);
     }
 
-    const type = getTypeString(value);
+    const type = this.getTypeString(value);
 
-    return checkPrimitiveType(GET_PROPERTY, types, AsIs(INDEX), type, errorReporter, sequence);
-  },
+    return checkPrimitiveType(
+      GET_PROPERTY,
+      types,
+      AsIs(INDEX),
+      type,
+      errorReporter,
+      sequence,
+    );
+  }
 
   getNamedProperty(target, name, value, config, sequence) {
-    const { types, errorReporter } = config;
-    const typeFn = types[name];
+    const typeFn = config.types[name];
 
     if (typeFn instanceof Function) {
       return typeFn(GET_PROPERTY, target, name, value, config, sequence);
     }
 
-    const type = getTypeString(value);
-
-    return checkPrimitiveType(GET_PROPERTY, types, name, type, errorReporter, sequence);
-  },
+    return super.getProperty(target, name, value, config, sequence);
+  }
 
   setProperty(target, name, newValue, config, sequence) {
     if (this.areArrayElementsOfSameType && isIndexAccessTarget(target)) {
@@ -189,7 +106,7 @@ const PrimitiveTypeChecker = {
     }
 
     return this.setNamedProperty(target, name, newValue, config, sequence);
-  },
+  }
 
   setIndexProperty(target, name, newValue, config, sequence) {
     const { types, errorReporter } = config;
@@ -199,68 +116,59 @@ const PrimitiveTypeChecker = {
       return typeFn(SET_PROPERTY, target, name, newValue, config, sequence);
     }
 
-    const type = getTypeString(newValue);
+    const type = this.getTypeString(newValue);
 
-    return checkPrimitiveType(SET_PROPERTY, types, AsIs(INDEX), type, errorReporter, sequence);
-  },
+    return checkPrimitiveType(
+      SET_PROPERTY,
+      types,
+      AsIs(INDEX),
+      type,
+      errorReporter,
+      sequence,
+    );
+  }
 
   setNamedProperty(target, name, newValue, config, sequence) {
-    const { types, errorReporter } = config;
-    const typeFn = types[name];
+    const typeFn = config.types[name];
 
     if (typeFn instanceof Function) {
       return typeFn(SET_PROPERTY, target, name, newValue, config, sequence);
     }
 
-    const type = getTypeString(newValue);
-
-    return checkPrimitiveType(SET_PROPERTY, types, name, type, errorReporter, sequence);
-  },
+    return super.setProperty(target, name, newValue, config, sequence);
+  }
 
   arguments(target, thisArg, args, config, sequence) {
-    const { types, errorReporter } = config;
-    const typeFn = types[ARGUMENTS];
+    const typeFn = config.types[ARGUMENTS];
 
     if (typeFn instanceof Function) {
       return typeFn(ARGUMENTS, target, args, config, sequence);
     }
 
-    const { length } = args;
-    let valid = true;
-
-    for (let index = 0; index < length; index++) {
-      const type = getTypeString(args[index]);
-      const agrValid = checkPrimitiveType(ARGUMENTS, types, String(index), type, errorReporter, sequence);
-
-      valid = agrValid && valid;
-    }
-
-    return valid;
-  },
+    return super.arguments(target, thisArg, args, config, sequence);
+  }
 
   returnValue(target, thisArg, value, config, sequence) {
-    const { types, errorReporter } = config;
-    const typeFn = types[RETURN_VALUE];
+    const typeFn = config.types[RETURN_VALUE];
 
     if (typeFn instanceof Function) {
       return typeFn(RETURN_VALUE, target, value, config, sequence);
     }
 
-    const type = getTypeString(value);
+    return super.returnValue(target, thisArg, value, config, sequence);
+  }
+}
 
-    return checkPrimitiveType(RETURN_VALUE, types, AsIs(RETURN_VALUE), type, errorReporter, sequence);
-  },
-
+export {
   isIndexAccessTarget,
-  getTypeString,
-  mergeConfigs,
-  replacePropertyTypeCheck,
-  replaceArgumentsTypeCheck,
-  replaceReturnValueTypeCheck,
   registerIndexBasedClass,
   setIndexValueType,
   setIndexValueTypeBy,
+  replaceArgumentsTypeCheck,
   replaceIndexedTypeCheck,
+  replacePropertyTypeCheck,
+  replaceReturnValueTypeCheck,
+  ExtendedTypeChecker,
 };
 
-export default PrimitiveTypeChecker;
+export default ExtendedTypeChecker;

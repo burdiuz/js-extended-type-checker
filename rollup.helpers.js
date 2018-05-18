@@ -16,7 +16,7 @@ export const plugins = [
     plugins: [
       'babel-plugin-transform-class-properties',
       'babel-plugin-transform-flow-strip-types',
-      ['babel-plugin-transform-object-rest-spread', { 'useBuiltIns': true }],
+      ['babel-plugin-transform-object-rest-spread', { useBuiltIns: true }],
       'babel-plugin-external-helpers',
     ],
     exclude: 'node_modules/**',
@@ -28,32 +28,36 @@ export const plugins = [
 ];
 
 export const baseConfig = {
-    input: 'source/index.js',
-    output: [
-      {
-        file: `dist/${LIBRARY_FILE_NAME}.js`,
-        sourcemap: true,
-        exports: 'named',
-        name: LIBRARY_VAR_NAME,
-        format: 'umd',
-      },
-    ],
-    plugins,
-  };
+  input: 'source/index.js',
+  output: [
+    {
+      file: `dist/${LIBRARY_FILE_NAME}.js`,
+      sourcemap: true,
+      exports: 'named',
+      name: LIBRARY_VAR_NAME,
+      format: 'cjs',
+    },
+  ],
+  plugins,
+  external: [
+    '@actualwave/primitive-type-checker',
+    '@actualwave/type-checkers',
+  ],
+};
 
 export const minConfig = {
-    input: 'source/index.js',
-    output: [
-      {
-        file: `dist/${LIBRARY_FILE_NAME}.min.js`,
-        sourcemap: true,
-        exports: 'named',
-        name: LIBRARY_VAR_NAME,
-        format: 'umd',
-      },
-    ],
-    plugins: [
-      ...plugins,
-      uglify({}, minify),
-    ],
-  };
+  input: 'source/minified.js',
+  output: [
+    {
+      file: `dist/${LIBRARY_FILE_NAME}.min.js`,
+      sourcemap: true,
+      exports: 'named',
+      name: LIBRARY_VAR_NAME,
+      format: 'umd',
+    },
+  ],
+  plugins: [
+    ...plugins,
+    uglify({}, minify),
+  ],
+};
