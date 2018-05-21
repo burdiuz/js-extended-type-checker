@@ -1,22 +1,22 @@
 {
   "name": "@actualwave/extended-type-checker",
-  "description": "Customizable runtime type check for primitive values",
-  "version": "0.1.8",
+  "description": "Customizable runtime type check for primitive values.`",
+  "version": "0.1.9",
   "main": "dist/extended-type-checker.js",
   "keywords": [
     "js",
     "javascript"
   ],
-  "homepage": "https://github.com/burdiuz/js-lib-environment",
+  "homepage": "https://github.com/burdiuz/js-extended-type-checker",
   "bugs": {
-    "url": "https://github.com/burdiuz/js-lib-environment/issues",
+    "url": "https://github.com/burdiuz/js-extended-type-checker/issues",
     "email": "burdiuz@gmail.com"
   },
   "license": "MIT",
   "author": "Oleg Galaburda <burdiuz@gmail.com> (http://actualwave.com/)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/burdiuz/js-lib-environment.git"
+    "url": "https://github.com/burdiuz/js-extended-type-checker.git"
   },
   "dependencies": {
     "@actualwave/primitive-type-checker": "^0.1.9",
