@@ -1,6 +1,6 @@
 {
   "name": "@actualwave/extended-type-checker",
-  "description": "",
+  "description": "Customizable runtime type check for primitive values",
   "version": "0.1.8",
   "main": "dist/extended-type-checker.js",
   "keywords": [
@@ -19,8 +19,8 @@
     "url": "https://github.com/burdiuz/js-lib-environment.git"
   },
   "dependencies": {
-    "@actualwave/primitive-type-checker": "git+https://github.com/burdiuz/js-primitive-type-checker.git",
-    "@actualwave/type-checkers": "git+https://github.com/burdiuz/js-type-checkers.git"
+    "@actualwave/primitive-type-checker": "^0.1.9",
+    "@actualwave/type-checkers": "^0.1.12"
   },
   "devDependencies": {
     "babel-core": "^6.26.3",
