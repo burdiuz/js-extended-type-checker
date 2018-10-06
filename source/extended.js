@@ -106,10 +106,6 @@ class ExtendedTypeChecker extends PrimitiveTypeChecker {
   };
 }
 
-export const createExtendedTypeChecker = (
-  collectTypesOnInit = true,
-  enableGetChecker = true,
-  areArrayElementsOfSameType = true,
-) => new ExtendedTypeChecker(collectTypesOnInit, enableGetChecker, areArrayElementsOfSameType);
+export const createExtendedTypeChecker = (options) => new ExtendedTypeChecker(options);
 
 export default ExtendedTypeChecker;

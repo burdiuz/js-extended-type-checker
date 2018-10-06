@@ -118,7 +118,7 @@ class ExtendedTypeChecker extends PrimitiveTypeChecker__default {
 
 }
 
-const createExtendedTypeChecker = (collectTypesOnInit = true, enableGetChecker = true, areArrayElementsOfSameType = true) => new ExtendedTypeChecker(collectTypesOnInit, enableGetChecker, areArrayElementsOfSameType);
+const createExtendedTypeChecker = options => new ExtendedTypeChecker(options);
 
 exports.MERGE = PrimitiveTypeChecker.MERGE;
 exports.ARGUMENTS = PrimitiveTypeChecker.ARGUMENTS;

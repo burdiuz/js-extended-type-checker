@@ -57,9 +57,13 @@ const makeUMDConfig = (suffix = '', additionalPlugins = []) => ({
       exports: 'named',
       name: LIBRARY_VAR_NAME,
       format: 'umd',
+      globals: {
+        '@actualwave/type-checkers': 'TypeCheckers',
+      },
     },
   ],
   plugins: [...plugins, ...additionalPlugins],
+  external: ['@actualwave/type-checkers'],
 });
 
 export const umdConfig = makeUMDConfig();
