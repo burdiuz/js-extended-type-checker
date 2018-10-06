@@ -24,9 +24,6 @@
     "@actualwave/primitive-type-checker": "git+https://github.com/burdiuz/js-primitive-type-checker.git",
     "@actualwave/type-checker-levels-storage": "0.0.2"
   },
-  "peerDependencies": {
-    "@actualwave/type-checkers": "git+https://github.com/burdiuz/js-type-checkers.git"
-  },
   "peerDependencies": {},
   "devDependencies": {
     "@babel/core": "^7.1.2",
