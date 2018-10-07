@@ -1,21 +1,260 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Example</title>
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
-        integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
-  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
-          integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
-          crossorigin="anonymous"></script>
+  <base href="/">
+  <link rel="stylesheet" href="https://unpkg.com/@actualwave/dom-console@latest/console.css">
+  <script src="https://unpkg.com/@actualwave/dom-console@latest/console.js"></script>
+  <script src="https://rawgit.com/burdiuz/js-type-checkers/master/dist/type-checkers.js"></script>
+  <script src="extended-type-checker.js"></script>
   <style type="text/css">
   </style>
-  <script type="text/javascript">
-  </script>
 </head>
+
 <body>
-<h1>Library Project Environment base</h1>
 </body>
+<script type="text/javascript">
+  /*
+	Setting up demo environment
+*/
+
+  class A extends Object {
+    constructor() {
+      super();
+      this.a = 1;
+    }
+  }
+  class B extends A {
+    constructor() {
+      super();
+      this.b = 2;
+    }
+  }
+  class C extends B {
+    constructor() {
+      super();
+      this.c = 3;
+    }
+  }
+  class D extends C {
+    constructor() {
+      super();
+      this.d = 4;
+    }
+  }
+
+  const createSourceObject = () => ({
+    myNum: 123,
+    myStr: 'my string',
+    myBool: true,
+    myA: new A(),
+    myB: new B(),
+    myC: new C(),
+    myD: new D(),
+  });
+
+  const { log, info, error } = DOMConsole.create(document.body);
+
+  const { wrap, unwrap, setDefaultTypeChecker } = TypeCheckers;
+
+  const { createExtendedTypeChecker, setErrorReporter } = ExtendedTypeChecker;
+
+  /*
+    Add custom error reporter to see type errors on right panel
+  */
+  setErrorReporter((action, name, required, received) => {
+    error(`${action}Error on "${name}" instead of "${required}" received "${received}"`);
+  });
+
+  /*
+    Tell TypeCheckers that we are going to
+    use ExtendedTypeChecker
+  */
+  setDefaultTypeChecker(createExtendedTypeChecker({
+    enableGetChecker: false,
+  }));
+
+  log('Source object:', createSourceObject());
+
+  /*
+    Start the demo
+  */
+  info('Extended Type Checker');
+  // const typed = wrap(source, null, { set: true });
+  const typed = wrap(createSourceObject());
+
+  log('Set properties with values of incorrect type:');
+  typed.myNum = '123';
+  typed.myBool = 0;
+
+  log('Assign array of integers to "myArray"');
+  typed.myArray = [1, 2, 3];
+  log('Assign string to 5th index of "myArray"');
+  typed.myArray[5] = '1';
+
+  log('Assign instance of D to "myA"');
+  typed.myA = new D();
+
+  log('Assign instance of D to "myB"');
+  typed.myB = new D();
+
+  log('Assign instance of D to "myC"');
+  typed.myC = new D();
+
+  log('Assign instance of D to "myD"');
+  typed.myD = new D();
+
+  log('Assign instance of A to "myD"');
+  typed.myD = new A();
+
+  log('Assign instance of B to "myC"');
+  typed.myC = new B();
+
+  log('\n\n\n');
+  info('Extended Type Checker With Custom Type Resolver');
+  /**
+    Get class name of a value
+   */
+  const functionNameTypeResolver = (value) => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    return value.constructor ? value.constructor.name : typeof value;
+  };
+
+  const custom = wrap(
+    createSourceObject(),
+    {
+      /**
+        This type checker has custom type resolver which, for objects, will return
+        class names instead of "object" string, so two objects of different classes
+        will not be compatible.
+       */
+      checker: createExtendedTypeChecker({
+        enableGetChecker: false,
+        customTypeResolver: functionNameTypeResolver,
+      }),
+    });
+
+  log('Set properties with values of incorrect type:');
+  custom.myNum = '123';
+  custom.myBool = 0;
+
+  log('Assign array of integers to "myArray"');
+  custom.myArray = [1, 2, 3];
+  log('Assign string to 5th index of "myArray"');
+  custom.myArray[5] = '1';
+
+  log('Assign instance of D to "myA"');
+  custom.myA = new D();
+
+  log('Assign instance of D to "myB"');
+  custom.myB = new D();
+
+  log('Assign instance of D to "myC"');
+  custom.myC = new D();
+
+  log('Assign instance of D to "myD"');
+  custom.myD = new D();
+
+  log('Assign instance of A to "myD"');
+  custom.myD = new A();
+
+  log('Assign instance of B to "myC"');
+  custom.myC = new B();
+
+  log('\n\n\n');
+  info('Extended Type Checker With Custom Type Resolver and Comparator');
+
+  /*
+    Let's report only class names insted of their Fcode
+  */
+  setErrorReporter((action, name, required, received) => {
+    const list = required.map((def) => def.name).join('", "');
+    error(`${action}Error on "${name}" instead of "${list}" received "${received.name}"`);
+  });
+
+  /**
+    Get class of a value
+   */
+  const classTypeResolver = (value) => {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+
+    return value.constructor;
+  };
+
+  /**
+    Compare classes
+   */
+  const classTypeComparator = (storage, key, type, target) => {
+    if (!storage.has(key)) {
+      return true;
+    }
+
+    let compatible = false;
+
+    storage.eachValue(key, (storedType) => {
+      compatible = compatible || storedType === type || storedType.isPrototypeOf(type);
+    });
+
+    return compatible;
+  };
+
+  const compar = wrap(
+    createSourceObject(),
+    {
+
+      /**
+        This type checker has custom type resolvers which gives classes insted of
+        strings and comparator which will strictly compare classes and check prototype
+        chain for inheritance. Values are compatible if they are of same type or new
+        value is of sub-type(sub class of original).
+      */
+      checker: createExtendedTypeChecker({
+        enableGetChecker: false,
+        customTypeResolver: classTypeResolver,
+        customTypeComparator: classTypeComparator,
+      }),
+    });
+
+  log('Set properties with values of incorrect type:');
+  compar.myNum = '123';
+  compar.myBool = 0;
+
+  log('Assign array of integers to "myArray"');
+  compar.myArray = [1, 2, 3];
+  log('Assign string to 5th index of "myArray"');
+  compar.myArray[5] = '1';
+
+  /**
+    Since D extends A, it should not give a type errors
+  */
+  log('Assign instance of D to "myA"');
+  compar.myA = new D();
+
+  log('Assign instance of D to "myB"');
+  compar.myB = new D();
+
+  log('Assign instance of D to "myC"');
+  compar.myC = new D();
+
+  log('Assign instance of D to "myD"');
+  compar.myD = new D();
+
+  /**
+    This property expects D and value of type A is not fitting
+  */
+  log('Assign instance of A to "myD"');
+  compar.myD = new A();
+
+  log('Assign instance of B to "myC"');
+  compar.myC = new B();
+</script>
+
 </html>

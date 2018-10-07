@@ -1,27 +1,25 @@
-import {
-  getTargetTypeChecker,
-  getTargetTypeCheckerConfig,
-} from '@actualwave/type-checkers';
+import { getClass } from '@actualwave/get-class';
+import { getTypeValue } from '@actualwave/primitive-type-checker';
+import { getTypeCheckerData } from '@actualwave/type-checkers';
 
-const indexBasedClasses = [Array];
+const indexBasedClasses = new Set([Array]);
 
 export const INDEX = '(Index)';
 
-export const isIndexAccessTarget = (target) =>
-  target && indexBasedClasses.indexOf(target.constructor) >= 0;
+export const isIndexAccessTarget = (target) => !!target && indexBasedClasses.has(getClass(target));
 
 export const registerIndexBasedClass = (constructor) => {
-  indexBasedClasses.push(constructor);
+  indexBasedClasses.add(constructor);
 };
 
 export const setIndexValueType = (target, type) => {
-  const config = getTargetTypeCheckerConfig(target);
+  const storage = getTypeCheckerData(target);
 
-  if (config) {
-    config.types[INDEX] = type || '';
+  if (storage && type) {
+    storage.set(INDEX, new Set([type]));
   }
 };
 
 export const setIndexValueTypeBy = (target, value) => {
-  setIndexValueType(target, getTargetTypeChecker(target).getTypeString(value));
+  setIndexValueType(target, getTypeValue(value));
 };
