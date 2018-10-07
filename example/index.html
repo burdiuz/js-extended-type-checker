@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="https://unpkg.com/@actualwave/dom-console@latest/console.css">
   <script src="https://unpkg.com/@actualwave/dom-console@latest/console.js"></script>
   <script src="https://rawgit.com/burdiuz/js-type-checkers/master/dist/type-checkers.js"></script>
-  <script src="primitive-type-checker.js"></script>
+  <script src="extended-type-checker.js"></script>
   <style type="text/css">
   </style>
 </head>
@@ -17,28 +17,42 @@
 <body>
 </body>
 <script type="text/javascript">
+  /*
+	Setting up demo environment
+*/
+
   const { log, info, error } = DOMConsole.create(document.body);
 
   const { wrap, unwrap, setDefaultTypeChecker } = TypeCheckers;
 
-  const { createPrimitiveTypeChecker, setErrorReporter } = PrimitiveTypeChecker;
+  const { createExtendedTypeChecker, setErrorReporter } = ExtendedTypeChecker;
 
+  /*
+    Add custom error reporter to see type errors on right panel
+  */
   setErrorReporter((action, name, required, received) => {
     error(`${action}Error on "${name}" instead of "${required}" received "${received}"`);
+    error('Stack trace', (new Error()).stack);
   });
 
-  setDefaultTypeChecker(createPrimitiveTypeChecker(true, false));
+  /*
+    Tell TypeCheckers that we are going to
+    use ExtendedTypeChecker
+  */
+  setDefaultTypeChecker(createExtendedTypeChecker({
+    enableGetChecker: false,
+  }));
 
-  log('Primitive Type Checker:');
-
-  const source = {
+  /*
+    Start the demo
+  */
+  log('Extended Type Checker');
+  // const typed = wrap(source, null, { set: true });
+  const typed = wrap({
     myNum: 123,
     myStr: 'my string',
     myBool: true,
-  };
-
-  // const typed = wrap(source, null, { set: true });
-  const typed = wrap(source);
+  });
 
   log('Source object:', typed);
 
@@ -46,13 +60,66 @@
   typed.myNum = '123';
   typed.myBool = 0;
 
-  typed.myArray = [];
-  log('Set "myArray" to an empty array:', typed);
+  typed.myArray = [1, 2, 3];
+  log('Set "myArray" to an array:', typed);
+  typed.myArray[0] = '1';
 
-  log('Set array to object:');
-  typed.myArray = {};
+  log('Extended Type Checker With Custom Type Resolver');
+  class A extends Object {
+    constructor() {
+      super();
+      this.a = 1;
+    }
+  }
+  class B extends A {
+    constructor() {
+      super();
+      this.b = 2;
+    }
+  }
+  class C extends B {
+    constructor() {
+      super();
+      this.c = 3;
+    }
+  }
+  class D extends C {
+    constructor() {
+      super();
+      this.d = 4;
+    }
+  }
 
-  log('Reulting object:', typed);
+  const customTypeResolver = (value) => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    return value.constructor ? value.constructor.name : typeof value;
+  };
+
+  const custom = wrap({
+    myNum: 123,
+    myStr: 'my string',
+    myBool: true,
+    myA: new A(),
+    myB: new B(),
+    myC: new C(),
+    myD: new D(),
+  }, {
+      checker: createExtendedTypeChecker({
+        enableGetChecker: false,
+        customTypeResolver,
+      }),
+    });
+
+log('Source object:', custom);
+
+log('Assign instance of D to "myA"');
+custom.myA = new D();
+
+log('Assign instance of A to "myD"');
+custom.myD = new A();
 </script>
 
 </html>

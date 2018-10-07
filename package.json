@@ -19,12 +19,14 @@
     "url": "https://github.com/burdiuz/js-extended-type-checker.git"
   },
   "dependencies": {
-    "@actualwave/get-class": "0.0.2",
-    "@actualwave/is-function": "0.0.1",
+    "@actualwave/get-class": "^0.0.6",
+    "@actualwave/is-function": "^0.0.1",
     "@actualwave/primitive-type-checker": "git+https://github.com/burdiuz/js-primitive-type-checker.git",
-    "@actualwave/type-checker-levels-storage": "0.0.2"
+    "@actualwave/type-checker-levels-storage": "^0.0.2"
   },
-  "peerDependencies": {},
+  "peerDependencies": {
+    "@actualwave/type-checkers": "git+https://github.com/burdiuz/js-type-checkers.git"
+  },
   "devDependencies": {
     "@babel/core": "^7.1.2",
     "@babel/plugin-external-helpers": "^7.0.0",

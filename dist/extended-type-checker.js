@@ -456,23 +456,8 @@
 	const SET_PROPERTY = '(SetProperty)';
 	const ARGUMENTS = '(Arguments)';
 	const RETURN_VALUE = '(ReturnValue)';
-	const checkPrimitiveType = (action, storage, target, names, type) => {
-	  if (!type) {
-	    return true;
-	  }
-
-	  const {
-	    lastName
-	  } = names;
-	  const missingType = storage.has(lastName) && !storage.hasValue(lastName, type);
-
-	  if (missingType) {
-	    const errorReporter = getErrorReporter();
-	    errorReporter(action, names.toString(), storage.list(lastName).join(', '), type);
-	  }
-
-	  storage.addFor(lastName, type, target);
-	  return !missingType;
+	const checkPrimitiveType = (storage, key, type) => {
+	  return !storage.has(key) || storage.hasValue(key, type);
 	};
 	const getTypeValue = value => {
 	  if (value === undefined) {
@@ -513,8 +498,27 @@
 	    return getTypeValue(value);
 	  }
 
-	  checkType(action, storage, target, names, type) {
-	    return checkPrimitiveType(action, storage, target, names, type);
+	  checkValueType(action, storage, target, names, type) {
+	    if (!type) {
+	      return true;
+	    }
+
+	    const {
+	      lastName
+	    } = names;
+	    const compatible = this.isTypeCompatible(storage, lastName, type, target);
+
+	    if (!compatible) {
+	      const errorReporter = getErrorReporter();
+	      errorReporter(action, names.toString(), storage.list(lastName).join(', '), type);
+	    }
+
+	    storage.addFor(lastName, type, target);
+	    return compatible;
+	  }
+
+	  isTypeCompatible(storage, key, type) {
+	    return checkPrimitiveType(storage, key, type);
 	  }
 	  /**
 	   * FIXME add function to @actualwave/type-checker-levels-storage to merge configs
@@ -546,12 +550,12 @@
 	    }
 
 	    const type = this.getTypeValue(value);
-	    return this.checkType(GET_PROPERTY, storage, target, names, type);
+	    return this.checkValueType(GET_PROPERTY, storage, target, names, type);
 	  }
 
 	  setProperty(target, names, value, storage) {
 	    const type = this.getTypeValue(value);
-	    return this.checkType(SET_PROPERTY, storage, target, names, type);
+	    return this.checkValueType(SET_PROPERTY, storage, target, names, type);
 	  }
 
 	  arguments(target, names, args, storage) {
@@ -562,7 +566,7 @@
 
 	    for (let index = 0; index < length; index++) {
 	      const type = this.getTypeValue(args[index]);
-	      const agrValid = this.checkType(ARGUMENTS, storage, target, names.clone(index), type);
+	      const agrValid = this.checkValueType(ARGUMENTS, storage, target, names.clone(index), type);
 	      valid = agrValid && valid;
 	    }
 
@@ -573,7 +577,7 @@
 	    const type = this.getTypeValue(value);
 	    const callNames = names.clone();
 	    callNames.appendCustomValue(RETURN_VALUE);
-	    return this.checkType(RETURN_VALUE, storage, target, callNames, type);
+	    return this.checkValueType(RETURN_VALUE, storage, target, callNames, type);
 	  }
 
 	}
@@ -626,34 +630,41 @@
 
 	Object.defineProperty(exports, '__esModule', { value: true });
 
-	const getClass = (target) => {
-	  if(target === null || target === undefined) {
-	    return undefined;
-	  }
-	  
-	  const proto = Object.getPrototypeOf(target);
-	  
-	  if (typeof proto === 'object') {
+	const getProtoConstructor = (value) => {
+	  const proto = Object.getPrototypeOf(value);
+
+	  if (proto && typeof proto === 'object') {
 	    return proto.constructor;
 	  }
 
-	  return proto;
+	  return proto || Object;
 	};
 
-	const getParentClass = (target) => {
-	  const def = getClass(target);
-	  
-	  return def && Object.getPrototypeOf(def);
+	const getClass = (value) => {
+	  if(value === null || value === undefined) {
+	    return undefined;
+	  }
+
+	  const constructor = value.constructor;
+
+	  if(
+	    typeof constructor === 'function'
+	    && value instanceof constructor
+	  ) {
+	    return value.constructor;
+	  }
+
+	  return getProtoConstructor(value);
 	};
+
+	const getParentClass = (value) => getProtoConstructor(getClass(value));
 
 	const getClassName = (value) => {
 	  if (!value) return '';
 
-	  const match = String(getClass(value)).match(
-	    /^(?:[^\(\{\s]*)(?:class|function)\s+([\w\d_$]+)(?:\s*\(|\s*\{|\s+extends)/,
-	  );
+	  const def = getClass(value);
 
-	  return match ? match[1] : '';
+	  return def ? def.name : '';
 	};
 
 	exports.getClassName = getClassName;
@@ -697,33 +708,42 @@
 	var isFunction = unwrapExports(isFunction_1);
 	var isFunction_2 = isFunction_1.isFunction;
 
+	const isOptionalFunction = (value, name) => {
+	  if (value !== undefined && !isFunction(value)) {
+	    throw new Error(`"${name}" must be a callable object, i.e. function.`);
+	  }
+	};
+
 	class ExtendedTypeChecker extends PrimitiveTypeChecker {
 	  constructor({
 	    collectTypesOnInit = true,
 	    enableGetChecker = true,
 	    areArrayElementsOfSameType = true,
-	    customGetTypeValue = undefined
+	    customTypeResolver = undefined,
+	    customTypeComparator = undefined
 	  } = {}) {
 	    super(collectTypesOnInit, enableGetChecker);
-
-	    this.setNamedProperty = (target, names, newValue, storage) => {
-	      return super.setProperty(target, names, newValue, storage);
-	    };
-
 	    this.areArrayElementsOfSameType = areArrayElementsOfSameType;
-	    this.customGetTypeValue = customGetTypeValue;
-
-	    if (this.customGetTypeValue !== undefined && !isFunction(this.customGetTypeValue)) {
-	      throw new Error('"customGetTypeValue" must be a callable object, i.e. function.');
-	    }
+	    this.customTypeResolver = customTypeResolver;
+	    isOptionalFunction(this.customTypeResolver, 'customTypeResolver');
+	    this.customTypeComparator = customTypeComparator;
+	    isOptionalFunction(this.customTypeComparator, 'customTypeComparator');
 	  }
 
 	  getTypeValue(value) {
-	    if (this.customGetTypeValue) {
-	      return this.customGetTypeValue(value);
+	    if (this.customTypeResolver) {
+	      return this.customTypeResolver(value);
 	    }
 
 	    return super.getTypeValue(value);
+	  }
+
+	  isTypeCompatible(storage, key, type, target) {
+	    if (this.customTypeComparator) {
+	      return this.customTypeComparator((target));
+	    }
+
+	    return super.isTypeCompatible(storage, key, type, target);
 	  }
 
 	  findIndexedType(target) {
@@ -761,15 +781,11 @@
 	      return this.getIndexProperty(target, names, value, storage);
 	    }
 
-	    return this.getNamedProperty(target, names, value, storage);
+	    return super.getProperty(target, names, value, storage);
 	  }
 
 	  getIndexProperty(target, names, value, storage) {
-	    return this.checkType(primitiveTypeChecker_10, target, names.clone(INDEX), this.getTypeValue(value), storage);
-	  }
-
-	  getNamedProperty(target, names, value, storage) {
-	    return super.getProperty(target, names, value, storage);
+	    return this.checkType(primitiveTypeChecker_10, storage, target, names, this.getTypeValue(value));
 	  }
 
 	  setProperty(target, names, newValue, storage) {
@@ -777,12 +793,11 @@
 	      return this.setIndexProperty(target, names, newValue, storage);
 	    }
 
-	    return this.setNamedProperty(target, names, newValue, storage);
+	    return super.setProperty(target, names, newValue, storage);
 	  }
 
 	  setIndexProperty(target, names, newValue, storage) {
-	    const type = this.getTypeValue(newValue);
-	    return this.checkType(primitiveTypeChecker_12, target, names, type, storage);
+	    return this.checkType(primitiveTypeChecker_12, storage, target, names, this.getTypeValue(newValue));
 	  }
 
 	}

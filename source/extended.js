@@ -8,28 +8,45 @@ import PrimitiveTypeChecker, {
 
 import { INDEX, isIndexAccessTarget } from './indexed';
 
+const isOptionalFunction = (value, name) => {
+  if (value !== undefined && !isFunction(value)) {
+    throw new Error(`"${name}" must be a callable object, i.e. function.`);
+  }
+};
+
 class ExtendedTypeChecker extends PrimitiveTypeChecker {
   constructor({
     collectTypesOnInit = true,
     enableGetChecker = true,
     areArrayElementsOfSameType = true,
-    customGetTypeValue = undefined,
+    customTypeResolver = undefined,
+    customTypeComparator = undefined,
   } = {}) {
     super(collectTypesOnInit, enableGetChecker);
 
     this.areArrayElementsOfSameType = areArrayElementsOfSameType;
-    this.customGetTypeValue = customGetTypeValue;
-    if (this.customGetTypeValue !== undefined && !isFunction(this.customGetTypeValue)) {
-      throw new Error('"customGetTypeValue" must be a callable object, i.e. function.');
-    }
+
+    this.customTypeResolver = customTypeResolver;
+    isOptionalFunction(this.customTypeResolver, 'customTypeResolver');
+
+    this.customTypeComparator = customTypeComparator;
+    isOptionalFunction(this.customTypeComparator, 'customTypeComparator');
   }
 
   getTypeValue(value) {
-    if (this.customGetTypeValue) {
-      return this.customGetTypeValue(value);
+    if (this.customTypeResolver) {
+      return this.customTypeResolver(value);
     }
 
     return super.getTypeValue(value);
+  }
+
+  isTypeCompatible(storage, key, type, target) {
+    if (this.customTypeComparator) {
+      return this.customTypeComparator((storage, key, type, target));
+    }
+
+    return super.isTypeCompatible(storage, key, type, target);
   }
 
   findIndexedType(target) {
@@ -70,21 +87,11 @@ class ExtendedTypeChecker extends PrimitiveTypeChecker {
       return this.getIndexProperty(target, names, value, storage);
     }
 
-    return this.getNamedProperty(target, names, value, storage);
+    return super.getProperty(target, names, value, storage);
   }
 
   getIndexProperty(target, names, value, storage) {
-    return this.checkType(
-      GET_PROPERTY,
-      target,
-      names.clone(INDEX),
-      this.getTypeValue(value),
-      storage,
-    );
-  }
-
-  getNamedProperty(target, names, value, storage) {
-    return super.getProperty(target, names, value, storage);
+    return this.checkType(GET_PROPERTY, storage, target, names, this.getTypeValue(value));
   }
 
   setProperty(target, names, newValue, storage) {
@@ -92,18 +99,12 @@ class ExtendedTypeChecker extends PrimitiveTypeChecker {
       return this.setIndexProperty(target, names, newValue, storage);
     }
 
-    return this.setNamedProperty(target, names, newValue, storage);
+    return super.setProperty(target, names, newValue, storage);
   }
 
   setIndexProperty(target, names, newValue, storage) {
-    const type = this.getTypeValue(newValue);
-
-    return this.checkType(SET_PROPERTY, target, names, type, storage);
+    return this.checkType(SET_PROPERTY, storage, target, names, this.getTypeValue(newValue));
   }
-
-  setNamedProperty = (target, names, newValue, storage) => {
-    return super.setProperty(target, names, newValue, storage);
-  };
 }
 
 export const createExtendedTypeChecker = (options) => new ExtendedTypeChecker(options);
