@@ -510,7 +510,7 @@
 
 	    if (!compatible) {
 	      const errorReporter = getErrorReporter();
-	      errorReporter(action, names.toString(), storage.list(lastName).join(', '), type);
+	      errorReporter(action, names.toString(), storage.list(lastName), type);
 	    }
 
 	    storage.addFor(lastName, type, target);
@@ -740,7 +740,7 @@
 
 	  isTypeCompatible(storage, key, type, target) {
 	    if (this.customTypeComparator) {
-	      return this.customTypeComparator((target));
+	      return this.customTypeComparator(storage, key, type, target);
 	    }
 
 	    return super.isTypeCompatible(storage, key, type, target);
@@ -785,7 +785,9 @@
 	  }
 
 	  getIndexProperty(target, names, value, storage) {
-	    return this.checkType(primitiveTypeChecker_10, storage, target, names, this.getTypeValue(value));
+	    const nextNames = names.clone();
+	    nextNames.appendCustomValue(INDEX);
+	    return this.checkValueType(primitiveTypeChecker_10, storage, target, nextNames, this.getTypeValue(value));
 	  }
 
 	  setProperty(target, names, newValue, storage) {
@@ -797,7 +799,9 @@
 	  }
 
 	  setIndexProperty(target, names, newValue, storage) {
-	    return this.checkType(primitiveTypeChecker_12, storage, target, names, this.getTypeValue(newValue));
+	    const nextNames = names.clone();
+	    nextNames.appendCustomValue(INDEX);
+	    return this.checkValueType(primitiveTypeChecker_12, storage, target, nextNames, this.getTypeValue(newValue));
 	  }
 
 	}

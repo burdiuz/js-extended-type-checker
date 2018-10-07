@@ -60,7 +60,7 @@ class ExtendedTypeChecker extends PrimitiveTypeChecker__default {
 
   isTypeCompatible(storage, key, type, target) {
     if (this.customTypeComparator) {
-      return this.customTypeComparator((target));
+      return this.customTypeComparator(storage, key, type, target);
     }
 
     return super.isTypeCompatible(storage, key, type, target);
@@ -105,7 +105,9 @@ class ExtendedTypeChecker extends PrimitiveTypeChecker__default {
   }
 
   getIndexProperty(target, names, value, storage) {
-    return this.checkType(PrimitiveTypeChecker.GET_PROPERTY, storage, target, names, this.getTypeValue(value));
+    const nextNames = names.clone();
+    nextNames.appendCustomValue(INDEX);
+    return this.checkValueType(PrimitiveTypeChecker.GET_PROPERTY, storage, target, nextNames, this.getTypeValue(value));
   }
 
   setProperty(target, names, newValue, storage) {
@@ -117,7 +119,9 @@ class ExtendedTypeChecker extends PrimitiveTypeChecker__default {
   }
 
   setIndexProperty(target, names, newValue, storage) {
-    return this.checkType(PrimitiveTypeChecker.SET_PROPERTY, storage, target, names, this.getTypeValue(newValue));
+    const nextNames = names.clone();
+    nextNames.appendCustomValue(INDEX);
+    return this.checkValueType(PrimitiveTypeChecker.SET_PROPERTY, storage, target, nextNames, this.getTypeValue(newValue));
   }
 
 }
