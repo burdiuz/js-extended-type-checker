@@ -18,8 +18,8 @@
 </body>
 <script type="text/javascript">
   /*
-	Setting up demo environment
-*/
+	  Setting up demo environment
+  */
 
   class A extends Object {
     constructor() {
@@ -93,6 +93,7 @@
   log('Assign array of integers to "myArray"');
   typed.myArray = [1, 2, 3];
   log('Assign string to 5th index of "myArray"');
+  console.log('TypeCheckers.isWrapped', TypeCheckers.isWrapped(typed.myArray));
   typed.myArray[5] = '1';
 
   log('Assign instance of D to "myA"');
